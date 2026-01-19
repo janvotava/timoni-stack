@@ -1,0 +1,108 @@
+package templates
+
+import (
+	"k8s.io/apimachinery/pkg/api/resource"
+	corev1 "k8s.io/api/core/v1"
+	timoniv1 "timoni.sh/core/v1alpha1"
+)
+
+// Config defines the schema and defaults for the Instance values.
+#Config: {
+	// The kubeVersion is a required field, set at apply-time
+	// via timoni.cue by querying the user's Kubernetes API.
+	kubeVersion!: string
+	// Using the kubeVersion you can enforce a minimum Kubernetes minor version.
+	// By default, the minimum Kubernetes version is set to 1.20.
+	clusterVersion: timoniv1.#SemVer & {#Version: kubeVersion, #Minimum: "1.20.0"}
+
+	// The moduleVersion is set from the user-supplied module version.
+	// This field is used for the `app.kubernetes.io/version` label.
+	moduleVersion!: string
+
+	// The Kubernetes metadata common to all resources.
+	// The `metadata.name` and `metadata.namespace` fields are
+	// set from the user-supplied instance name and namespace.
+	metadata: timoniv1.#Metadata & {#Version: moduleVersion}
+
+	// The labels allows adding `metadata.labels` to all resources.
+	// The `app.kubernetes.io/name` and `app.kubernetes.io/version` labels
+	// are automatically generated and can't be overwritten.
+	metadata: labels: timoniv1.#Labels
+
+	// The annotations allows adding `metadata.annotations` to all resources.
+	metadata: annotations?: timoniv1.#Annotations
+
+	// The selector allows adding label selectors to Deployments and Services.
+	// The `app.kubernetes.io/name` label selector is automatically generated
+	// from the instance name and can't be overwritten.
+	selector: timoniv1.#Selector & {#Name: metadata.name}
+
+	// The image allows setting the container image repository,
+	// tag, digest and pull policy.
+	image: timoniv1.#Image & {
+		repository: *"docker.io/postgres" | string
+		tag:        *"18" | string
+		digest:     *"" | string
+	}
+
+	// The pod allows setting the Kubernetes Pod annotations, image pull secrets,
+	// affinity and anti-affinity rules.
+	pod: {
+		annotations?: timoniv1.#Annotations
+		affinity?:    corev1.#Affinity
+		imagePullSecrets?: [...timoniv1.#ObjectReference]
+	}
+
+	// The resources allows setting the container resource requirements.
+	// By default, the container requests 10m CPU and 32Mi memory.
+	resources?: timoniv1.#ResourceRequirements
+
+	// The number of pods replicas.
+	// By default, the number of replicas is 1.
+	replicas: *1 | int & >0
+
+	// The securityContext allows setting the container security context.
+	securityContext?: corev1.#SecurityContext
+
+	// The service allows setting the Kubernetes Service annotations and port.
+	service: {
+		annotations?: timoniv1.#Annotations
+		port:         *5432 | int & >0 & <=65535
+	}
+
+	// Postgres user
+	user: *"postgres" | string
+	// Postgres password
+	password!: string
+	// Postgres database
+	database: *"postgres" | string
+	// This optional config can be used to send arguments to postgres initdb.
+	initdbArgs?: string
+	// This optional environment variable can be used to define another location for the Postgres transaction log.
+	initdbWalDir?: string
+	// Storage configuration
+	storage: {
+		size:       *"1Gi" | resource.#Quantity
+		persistent: *true | bool
+		retainPolicy: {
+			whenDeleted: *"Retain" | string
+			whenScaled:  *"Retain" | string
+		}
+		labels:       timoniv1.#Labels
+		annotations?: timoniv1.#Annotations
+	}
+}
+
+// Instance takes the config values and outputs the Kubernetes objects.
+#Instance: {
+	config: #Config
+
+	objects: {
+		statefulset: #StatefulSet & {
+			#config:     config
+			#secretname: objects.secret.metadata.name
+		}
+		service: #Service & {#config: config}
+		secret: #Secret & {#config: config}
+	}
+}
