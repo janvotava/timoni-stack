@@ -55,14 +55,16 @@ import (
 	replicas: *1 | int & >0
 
 	// The securityContext allows setting the container security context.
-	// By default, the container is denined privilege escalation.
+	// By default, the container meets PodSecurity restricted standards.
 	securityContext: corev1.#SecurityContext & {
 		allowPrivilegeEscalation: *false | true
 		privileged:               *false | true
-		capabilities:
-		{
+		runAsNonRoot:             *true | bool
+		capabilities: {
 			drop: *["ALL"] | [string]
-			add: *["CHOWN", "NET_BIND_SERVICE", "SETGID", "SETUID"] | [string]
+		}
+		seccompProfile: {
+			type: *"RuntimeDefault" | string
 		}
 	}
 
