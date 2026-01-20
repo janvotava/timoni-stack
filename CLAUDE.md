@@ -8,7 +8,10 @@ This is a Timoni stack repository for deploying applications on Kubernetes. Timo
 
 ## Repository Structure
 
-- `modules/` - Reusable Timoni modules (PostgreSQL, Miniflux)
+- `modules/` - Reusable Timoni modules
+  - `postgresql` - PostgreSQL database
+  - `miniflux` - Miniflux RSS reader
+  - `cilium-network-policy` - Generic Cilium network policy module
 - `bundles/` - Bundle definitions that compose multiple modules together
 - Each module contains:
   - `timoni.cue` - Main entrypoint that defines the schema and workflow
@@ -100,3 +103,54 @@ Each module's `cue.mod/` contains:
 2. Define runtime parameters with `@timoni(runtime:string:VAR_NAME)`
 3. Add instances under `instances:` with module URLs and values
 4. Use private fields (prefixed with `_`) for runtime values that are referenced in instance configs
+
+### Using Cilium Network Policy Module
+The `cilium-network-policy` module creates CiliumNetworkPolicy resources for controlling pod-to-pod traffic. Key features:
+- **Custom selector labels**: Target any pods by specifying `selector.labels`
+- **Ingress rules**: Control who can connect to the selected pods
+- **Egress rules**: Control where the selected pods can connect
+- **DNS support**: Optional DNS egress via `egress.allowDNS` (enabled by default)
+- **External traffic**: Use `toEntities: ["world"]` for internet access
+- **Optional ports**: Ports can be omitted to allow all ports (useful for external traffic)
+
+Example usage in a bundle:
+```cue
+"app-network-policy": {
+    module: url: "file://../modules/cilium-network-policy"
+    namespace: "myapp"
+    values: {
+        selector: labels: {
+            "app.kubernetes.io/name": "myapp"
+        }
+        ingress: {
+            rules: {
+                "allow-nginx": {
+                    fromLabels: {"app.kubernetes.io/name": "nginx"}
+                    fromNamespace: "ingress"
+                    toPorts: [{port: 8080, protocol: "TCP"}]
+                }
+            }
+        }
+        egress: {
+            allowDNS: true
+            rules: {
+                "allow-db": {
+                    toLabels: {"app.kubernetes.io/name": "postgresql"}
+                    toPorts: [{port: 5432, protocol: "TCP"}]
+                }
+                "allow-internet": {
+                    toEntities: ["world"]  // No toPorts = all ports allowed
+                }
+            }
+        }
+    }
+}
+```
+
+### Vendoring CRDs
+For modules that use custom resources (like CiliumNetworkPolicy), vendor the CRD for proper type validation:
+```bash
+cd modules/<module-name>
+timoni mod vendor crd -f <crd-url>
+```
+This generates CUE types in `cue.mod/gen/` that can be imported and used for compile-time validation.

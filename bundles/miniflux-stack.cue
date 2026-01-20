@@ -53,5 +53,71 @@ bundle: {
 				}
 			}
 		}
+		"postgresql-network-policy": {
+			module: url: "file://../modules/cilium-network-policy"
+			namespace: #namespace
+			values: {
+				selector: labels: {
+					"app.kubernetes.io/name": "postgresql"
+				}
+				ingress: {
+					rules: {
+						"allow-miniflux": {
+							fromLabels: {
+								"app.kubernetes.io/name": "miniflux"
+							}
+							toPorts: [{
+								port:     5432
+								protocol: "TCP"
+							}]
+						}
+					}
+				}
+				egress: {
+					allowDNS: true
+					rules: {}
+				}
+			}
+		}
+		"miniflux-network-policy": {
+			module: url: "file://../modules/cilium-network-policy"
+			namespace: #namespace
+			values: {
+				selector: labels: {
+					"app.kubernetes.io/name": "miniflux"
+				}
+				ingress: {
+					rules: {
+						"allow-ingress": {
+							fromLabels: {
+								"app.kubernetes.io/component": "controller"
+							}
+							fromNamespace: "ingress"
+							toPorts: [{
+								port:     8080
+								protocol: "TCP"
+							}]
+						}
+					}
+				}
+				egress: {
+					allowDNS: true
+					rules: {
+						"allow-postgresql": {
+							toLabels: {
+								"app.kubernetes.io/name": "postgresql"
+							}
+							toPorts: [{
+								port:     5432
+								protocol: "TCP"
+							}]
+						}
+						"allow-feeds": {
+							toEntities: ["world"]
+						}
+					}
+				}
+			}
+		}
 	}
 }

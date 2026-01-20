@@ -4,6 +4,7 @@
 
 - `postgresql` - PostgreSQL database
 - `miniflux` - Miniflux RSS reader
+- `cilium-network-policy` - Generic Cilium network policy for pod-to-pod traffic control
 
 ## Bundles
 
