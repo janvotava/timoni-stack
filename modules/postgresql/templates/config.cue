@@ -51,6 +51,14 @@ import (
 		annotations?: timoniv1.#Annotations
 		affinity?:    corev1.#Affinity
 		imagePullSecrets?: [...timoniv1.#ObjectReference]
+		securityContext: corev1.#PodSecurityContext & {
+			runAsUser:  *999 | int
+			runAsGroup: *999 | int
+			fsGroup:    *999 | int
+			seccompProfile: {
+				type: *"RuntimeDefault" | string
+			}
+		}
 	}
 
 	// The resources allows setting the container resource requirements.
@@ -62,7 +70,18 @@ import (
 	replicas: *1 | int & >0
 
 	// The securityContext allows setting the container security context.
-	securityContext?: corev1.#SecurityContext
+	// By default, the container meets PodSecurity restricted standards.
+	securityContext: corev1.#SecurityContext & {
+		allowPrivilegeEscalation: *false | true
+		privileged:               *false | true
+		runAsNonRoot:             *true | bool
+		capabilities: {
+			drop: *["ALL"] | [string]
+		}
+		seccompProfile: {
+			type: *"RuntimeDefault" | string
+		}
+	}
 
 	// The service allows setting the Kubernetes Service annotations and port.
 	service: {

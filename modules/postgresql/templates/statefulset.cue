@@ -25,6 +25,7 @@ import (
 				}
 			}
 			spec: corev1.#PodSpec & {
+				securityContext: #config.pod.securityContext
 				containers: [
 					{
 						name:            "postgres"
