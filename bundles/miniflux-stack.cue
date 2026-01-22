@@ -24,6 +24,16 @@ bundle: {
 					size:       "1Gi"
 					persistent: true
 				}
+				resources: {
+					requests: {
+						cpu:    "100m"
+						memory: "256Mi"
+					}
+					limits: {
+						cpu:    "500m"
+						memory: "512Mi"
+					}
+				}
 			}
 		}
 		miniflux: {
@@ -49,6 +59,16 @@ bundle: {
 					tls:       true
 					annotations: {
 						"cert-manager.io/cluster-issuer": "letsencrypt"
+					}
+				}
+				resources: {
+					requests: {
+						cpu:    "50m"
+						memory: "128Mi"
+					}
+					limits: {
+						cpu:    "200m"
+						memory: "256Mi"
 					}
 				}
 			}
